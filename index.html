@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Clima - Capanema PA</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071a36;font-family:Arial,Helvetica,sans-serif}
+#screen{
+  width:100vw;height:100vh;min-height:100vh;
+  color:#fff;text-align:center;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#06367b 0%,#078de9 42%,#075ab1 68%,#061c3e 100%);
+}
+.top{padding:4.5% 5% 2.5%;background:rgba(2,24,67,.65);border-bottom:1px solid rgba(75,221,255,.7)}
+.place{font-size:7.5vw;font-weight:800;white-space:nowrap;line-height:1.05}
+.meta{margin-top:3%;padding-top:3%;border-top:1px solid #35d9f1;font-size:4vw;font-weight:700;display:flex;justify-content:space-between}
+.hero{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:2% 3%}
+.icon{font-size:24vw;line-height:.9;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.temp{font-size:29vw;line-height:.85;font-weight:900;letter-spacing:-3px;text-shadow:0 3px 4px rgba(0,0,0,.28)}
+.desc{font-size:5.5vw;font-weight:700;margin-top:4%;padding:2.5% 4%;width:94%;border:1px solid rgba(53,217,241,.8);border-radius:5vw;background:rgba(4,64,132,.45)}
+.grid{margin:0 4% 5%;padding:4%;display:grid;grid-template-columns:1fr 1fr;gap:0;background:rgba(2,23,54,.72);border:1px solid rgba(53,217,241,.55);border-radius:6vw}
+.cell{min-height:14vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.cell:nth-child(1),.cell:nth-child(3){border-right:1px solid rgba(80,190,255,.7)}
+.cell:nth-child(1),.cell:nth-child(2){border-bottom:1px solid rgba(80,190,255,.7)}
+.label{font-size:4.5vw;font-weight:800}
+.value{font-size:8vw;font-weight:900;margin-top:1%}
+.small{font-size:3.2vw;font-weight:700;margin-top:1%}
+.error{font-size:3.4vw;color:#d8efff;padding:1% 4% 3%}
+</style>
+</head>
+<body>
+<div id="screen">
+  <div class="top">
+    <div class="place">⌖ CAPANEMA - PA</div>
+    <div class="meta"><span id="date">--</span><span id="clock">--:--</span></div>
+  </div>
+  <div class="hero">
+    <div class="icon" id="weatherIcon">☀️</div>
+    <div class="temp"><span id="temp">--</span><span style="font-size:.42em">°C</span></div>
+    <div class="desc" id="desc">Carregando clima...</div>
+  </div>
+  <div class="grid">
+    <div class="cell"><div class="label">MÁX.</div><div class="value" id="max">--°</div></div>
+    <div class="cell"><div class="label">MÍN.</div><div class="value" id="min">--°</div></div>
+    <div class="cell"><div class="label">UMIDADE</div><div class="value" id="humidity">--%</div></div>
+    <div class="cell"><div class="label">VENTO</div><div class="value" id="wind">--</div><div class="small">km/h</div></div>
+  </div>
+  <div class="error" id="status"></div>
+</div>
+
+<script>
+const LAT=-1.195, LON=-47.180; // Capanema-PA (aprox.)
+const API=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=America%2FBelem&forecast_days=1`;
+
+const map={
+  0:["Céu limpo","☀️"],1:["Predominantemente limpo","🌤️"],2:["Parcialmente nublado","⛅"],3:["Nublado","☁️"],
+  45:["Neblina","🌫️"],48:["Neblina","🌫️"],51:["Garoa leve","🌦️"],53:["Garoa","🌦️"],55:["Garoa forte","🌧️"],
+  61:["Chuva leve","🌦️"],63:["Chuva","🌧️"],65:["Chuva forte","🌧️"],80:["Pancadas de chuva","🌦️"],81:["Pancadas de chuva","🌧️"],82:["Chuva intensa","⛈️"],
+  95:["Trovoadas","⛈️"],96:["Trovoadas","⛈️"],99:["Trovoadas fortes","⛈️"]
+};
+
+function updateClock(){
+ const d=new Date();
+ document.getElementById("clock").textContent=d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Belem"});
+ document.getElementById("date").textContent=d.toLocaleDateString("pt-BR",{weekday:"short",day:"2-digit",month:"short",timeZone:"America/Belem"}).toUpperCase().replace(".","");
+}
+async function weather(){
+ try{
+   const r=await fetch(API,{cache:"no-store"});
+   if(!r.ok) throw new Error("HTTP "+r.status);
+   const j=await r.json(), c=j.current, d=j.daily;
+   document.getElementById("temp").textContent=Math.round(c.temperature_2m);
+   document.getElementById("humidity").textContent=Math.round(c.relative_humidity_2m)+"%";
+   document.getElementById("wind").textContent=Math.round(c.wind_speed_10m);
+   document.getElementById("max").textContent=Math.round(d.temperature_2m_max[0])+"°";
+   document.getElementById("min").textContent=Math.round(d.temperature_2m_min[0])+"°";
+   const w=map[c.weather_code]||["Condição atual","🌤️"];
+   document.getElementById("desc").textContent=w[0];
+   document.getElementById("weatherIcon").textContent=w[1];
+   document.getElementById("status").textContent="";
+ }catch(e){
+   document.getElementById("status").textContent="Sem atualização do clima • verifique a internet";
+ }
+}
+updateClock(); setInterval(updateClock,1000);
+weather(); setInterval(weather,10*60*1000);
+</script>
+</body>
+</html>
